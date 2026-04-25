@@ -576,10 +576,13 @@
         });
 
         function parseMarkdown(text) {
+            const parseStartTotal = performance.now();
             let html = text;
 
             // Escape HTML
+            const escapeStart = performance.now();
             html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            console.log(`Escape HTML: ${(performance.now() - escapeStart).toFixed(2)}ms`);
 
             // Code blocks (with or without language and newline)
             html = html.replace(/```(\w+)?\n?([\s\S]*?)```/g, function(match, lang, code) {
@@ -651,6 +654,8 @@
             html = html.replace(/<p>\s*(<pre>)/g, '$1');
             html = html.replace(/(<\/pre>)\s*<\/p>/g, '$1');
 
+            const parseEndTotal = performance.now();
+            console.log(`Total parseMarkdown: ${(parseEndTotal - parseStartTotal).toFixed(2)}ms`);
             return html;
         }
 
@@ -712,6 +717,10 @@
             const model = modelInput.value.trim();
             const message = messageInput.value.trim();
 
+            console.log('=== SEND MESSAGE START ===');
+            console.log('Model:', model);
+            console.log('Message length:', message.length);
+
             if (!apiKey) {
                 addMessage('assistant', 'Please enter your Poe API key.', true);
                 return;
@@ -727,6 +736,7 @@
             }
 
             if (isGenerating) {
+                console.log('Already generating, ignoring');
                 return;
             }
 
@@ -740,8 +750,12 @@
             messageInput.style.height = 'auto';
 
             const typingIndicator = addTypingIndicator();
+            console.log('Typing indicator added');
 
             try {
+                console.log('Sending fetch request...');
+                const fetchStart = performance.now();
+
                 const response = await fetch('https://api.poe.com/v1/chat/completions', {
                     method: 'POST',
                     headers: {
@@ -755,22 +769,36 @@
                     })
                 });
 
+                const fetchEnd = performance.now();
+                console.log(`Fetch completed in ${(fetchEnd - fetchStart).toFixed(2)}ms`);
+
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({}));
                     throw new Error(errorData.error?.message || `API error: ${response.status} ${response.statusText}`);
                 }
 
+                console.log('Response OK, starting stream...');
                 removeTypingIndicator();
 
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
                 let assistantMessage = '';
                 let contentDiv = null;
+                let chunkCount = 0;
+                let updateCount = 0;
+                const streamStart = performance.now();
 
                 while (true) {
+                    const readStart = performance.now();
                     const { done, value } = await reader.read();
-                    if (done) break;
+                    const readEnd = performance.now();
 
+                    if (done) {
+                        console.log('Stream complete');
+                        break;
+                    }
+
+                    chunkCount++;
                     const chunk = decoder.decode(value, { stream: true });
                     const lines = chunk.split('\n');
 
@@ -778,6 +806,7 @@
                         if (line.startsWith('data: ')) {
                             const data = line.slice(6);
                             if (data === '[DONE]') {
+                                console.log('Received [DONE] signal');
                                 break;
                             }
 
@@ -786,28 +815,48 @@
                                 const delta = parsed.choices?.[0]?.delta?.content;
                                 if (delta) {
                                     assistantMessage += delta;
+                                    updateCount++;
+
                                     if (!contentDiv) {
-                                        // Don't parse markdown during streaming (parseMarkdownNow = false)
+                                        console.log('Creating message div');
                                         contentDiv = addMessage('assistant', assistantMessage, false, false);
                                     } else {
-                                        // Just update text content, no markdown parsing
-                                        contentDiv.textContent = assistantMessage;
-                                        chatContainer.scrollTop = chatContainer.scrollHeight;
+                                        // Update every 5 chunks to reduce DOM operations
+                                        if (updateCount % 5 === 0) {
+                                            contentDiv.textContent = assistantMessage;
+                                            chatContainer.scrollTop = chatContainer.scrollHeight;
+                                        }
                                     }
                                 }
                             } catch (e) {
-                                // Skip malformed JSON
+                                console.warn('Failed to parse chunk:', e.message);
                             }
                         }
                     }
                 }
 
+                const streamEnd = performance.now();
+                console.log(`Stream took ${(streamEnd - streamStart).toFixed(2)}ms`);
+                console.log(`Received ${chunkCount} chunks, ${updateCount} updates`);
+                console.log(`Message length: ${assistantMessage.length} chars`);
+
+                // Final update with all text
+                if (contentDiv && updateCount % 5 !== 0) {
+                    contentDiv.textContent = assistantMessage;
+                }
+
                 // Parse markdown once at the end
                 if (assistantMessage) {
+                    console.log('Parsing markdown...');
+                    const parseStart = performance.now();
                     if (contentDiv) {
                         contentDiv.innerHTML = parseMarkdown(assistantMessage);
                     }
+                    const parseEnd = performance.now();
+                    console.log(`Markdown parse took ${(parseEnd - parseStart).toFixed(2)}ms`);
+
                     conversationHistory.push({ role: 'assistant', content: assistantMessage });
+                    console.log('Added to conversation history');
                 } else {
                     addMessage('assistant', 'No response received from the API.', true);
                 }
@@ -820,6 +869,7 @@
                 isGenerating = false;
                 sendButton.disabled = false;
                 messageInput.focus();
+                console.log('=== SEND MESSAGE END ===');
             }
         }
     </script>
