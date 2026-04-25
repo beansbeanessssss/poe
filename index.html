@@ -26,6 +26,29 @@
             box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         }
 
+        .header-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 12px;
+        }
+
+        .new-chat-btn {
+            padding: 8px 16px;
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .new-chat-btn:hover {
+            background: #e5e7eb;
+            border-color: #9ca3af;
+        }
+
         .config-row {
             display: flex;
             gap: 12px;
@@ -133,13 +156,78 @@
             border-radius: 12px;
             box-shadow: 0 1px 2px rgba(0,0,0,0.05);
             line-height: 1.6;
-            white-space: pre-wrap;
             word-wrap: break-word;
         }
 
         .message.user .message-content {
             background: #10a37f;
             color: white;
+        }
+
+        .message.assistant .message-content pre {
+            background: #f5f5f5;
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 8px 0;
+        }
+
+        .message.assistant .message-content code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        .message.assistant .message-content pre code {
+            background: transparent;
+            padding: 0;
+        }
+
+        .message.assistant .message-content h1,
+        .message.assistant .message-content h2,
+        .message.assistant .message-content h3 {
+            margin-top: 16px;
+            margin-bottom: 8px;
+        }
+
+        .message.assistant .message-content h1 {
+            font-size: 1.5em;
+        }
+
+        .message.assistant .message-content h2 {
+            font-size: 1.3em;
+        }
+
+        .message.assistant .message-content h3 {
+            font-size: 1.1em;
+        }
+
+        .message.assistant .message-content ul,
+        .message.assistant .message-content ol {
+            margin: 8px 0;
+            padding-left: 24px;
+        }
+
+        .message.assistant .message-content li {
+            margin: 4px 0;
+        }
+
+        .message.assistant .message-content p {
+            margin: 8px 0;
+        }
+
+        .message.assistant .message-content a {
+            color: #10a37f;
+            text-decoration: underline;
+        }
+
+        .message.assistant .message-content blockquote {
+            border-left: 3px solid #d1d5db;
+            padding-left: 12px;
+            margin: 8px 0;
+            color: #6b7280;
         }
 
         .message.error .message-content {
@@ -261,17 +349,26 @@
             </div>
             <div class="config-group">
                 <label for="model">Model</label>
-                <input type="text" id="model" list="modelList" placeholder="Select or type model name" value="GPT-4o">
-                <datalist id="modelList">
-                    <option value="GPT-4o">
-                    <option value="Claude-Sonnet-4.6">
-                    <option value="Claude-Opus-4.6">
-                    <option value="Gemini-3.1-Pro">
-                    <option value="Gemini-3-Flash">
-                    <option value="GPT-5.4">
-                    <option value="Grok-4">
-                </datalist>
+                <select id="model">
+                    <option value="GPT-4o">GPT-4o</option>
+                    <option value="GPT-5.4">GPT-5.4</option>
+                    <option value="GPT-5.4-Pro">GPT-5.4-Pro</option>
+                    <option value="Claude-Sonnet-4.6">Claude-Sonnet-4.6</option>
+                    <option value="Claude-Opus-4.6">Claude-Opus-4.6</option>
+                    <option value="Gemini-3.1-Pro">Gemini-3.1-Pro</option>
+                    <option value="Gemini-3-Flash">Gemini-3-Flash</option>
+                    <option value="Gemini-2.5-Flash-Lite">Gemini-2.5-Flash-Lite</option>
+                    <option value="Grok-4">Grok-4</option>
+                    <option value="Grok-4.1-Fast-Reasoning">Grok-4.1-Fast-Reasoning</option>
+                    <option value="Grok-4.1-Fast-Non-Reasoning">Grok-4.1-Fast-Non-Reasoning</option>
+                    <option value="Grok-Code-Fast-1">Grok-Code-Fast-1</option>
+                    <option value="o4-mini-deep-research">o4-mini-deep-research</option>
+                    <option value="o3-deep-research">o3-deep-research</option>
+                </select>
             </div>
+        </div>
+        <div class="header-actions">
+            <button class="new-chat-btn" id="newChatBtn">🔄 New Chat</button>
         </div>
     </div>
 
@@ -295,6 +392,7 @@
         const sendButton = document.getElementById('sendButton');
         const apiKeyInput = document.getElementById('apiKey');
         const modelInput = document.getElementById('model');
+        const newChatBtn = document.getElementById('newChatBtn');
 
         messageInput.addEventListener('input', function() {
             this.style.height = 'auto';
@@ -310,6 +408,94 @@
 
         sendButton.addEventListener('click', sendMessage);
 
+        newChatBtn.addEventListener('click', function() {
+            if (confirm('Start a new chat? This will clear the current conversation.')) {
+                conversationHistory = [
+                    { role: "system", content: "You are a helpful assistant." }
+                ];
+                chatContainer.innerHTML = '';
+            }
+        });
+
+        function parseMarkdown(text) {
+            let html = text;
+
+            // Escape HTML
+            html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+            // Code blocks (with or without language and newline)
+            html = html.replace(/```(\w+)?\n?([\s\S]*?)```/g, function(match, lang, code) {
+                return '<pre><code>' + code.trim() + '</code></pre>';
+            });
+
+            // Inline code (must come after code blocks)
+            html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+            // Headers
+            html = html.replace(/^### (.*$)/gm, '<h3>$1</h3>');
+            html = html.replace(/^## (.*$)/gm, '<h2>$1</h2>');
+            html = html.replace(/^# (.*$)/gm, '<h1>$1</h1>');
+
+            // Bold (must come before italic to avoid conflicts)
+            html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
+
+            // Italic (comes after bold)
+            html = html.replace(/\*([^*]+?)\*/g, '<em>$1</em>');
+            html = html.replace(/_([^_]+?)_/g, '<em>$1</em>');
+
+            // Links
+            html = html.replace(/\[([^\]]+)\]\(([^\)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+
+            // Line breaks for paragraphs
+            html = html.replace(/\n\n/g, '</p><p>');
+            html = '<p>' + html + '</p>';
+
+            // Unordered lists
+            html = html.replace(/<p>([^\n]*- .+?)<\/p>/gs, function(match, list) {
+                let items = list.split('\n').filter(line => line.trim().startsWith('-'));
+                if (items.length > 0) {
+                    let ul = '<ul>';
+                    items.forEach(item => {
+                        ul += '<li>' + item.replace(/^- /, '').trim() + '</li>';
+                    });
+                    ul += '</ul>';
+                    return ul;
+                }
+                return match;
+            });
+
+            // Ordered lists
+            html = html.replace(/<p>([^\n]*\d+\. .+?)<\/p>/gs, function(match, list) {
+                let items = list.split('\n').filter(line => /^\d+\./.test(line.trim()));
+                if (items.length > 0) {
+                    let ol = '<ol>';
+                    items.forEach(item => {
+                        ol += '<li>' + item.replace(/^\d+\. /, '').trim() + '</li>';
+                    });
+                    ol += '</ol>';
+                    return ol;
+                }
+                return match;
+            });
+
+            // Blockquotes
+            html = html.replace(/^&gt; (.*$)/gm, '<blockquote>$1</blockquote>');
+
+            // Clean up empty paragraphs
+            html = html.replace(/<p>\s*<\/p>/g, '');
+            html = html.replace(/<p>\s*(<h[123]>)/g, '$1');
+            html = html.replace(/(<\/h[123]>)\s*<\/p>/g, '$1');
+            html = html.replace(/<p>\s*(<ul>)/g, '$1');
+            html = html.replace(/(<\/ul>)\s*<\/p>/g, '$1');
+            html = html.replace(/<p>\s*(<ol>)/g, '$1');
+            html = html.replace(/(<\/ol>)\s*<\/p>/g, '$1');
+            html = html.replace(/<p>\s*(<pre>)/g, '$1');
+            html = html.replace(/(<\/pre>)\s*<\/p>/g, '$1');
+
+            return html;
+        }
+
         function addMessage(role, content, isError = false) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${role}${isError ? ' error' : ''}`;
@@ -320,7 +506,12 @@
 
             const contentDiv = document.createElement('div');
             contentDiv.className = 'message-content';
-            contentDiv.textContent = content;
+
+            if (role === 'assistant' && !isError) {
+                contentDiv.innerHTML = parseMarkdown(content);
+            } else {
+                contentDiv.textContent = content;
+            }
 
             messageDiv.appendChild(avatar);
             messageDiv.appendChild(contentDiv);
@@ -369,7 +560,7 @@
             }
 
             if (!model) {
-                addMessage('assistant', 'Please select or enter a model name.', true);
+                addMessage('assistant', 'Please select a model.', true);
                 return;
             }
 
@@ -440,7 +631,7 @@
                                     if (!contentDiv) {
                                         contentDiv = addMessage('assistant', assistantMessage);
                                     } else {
-                                        contentDiv.textContent = assistantMessage;
+                                        contentDiv.innerHTML = parseMarkdown(assistantMessage);
                                         chatContainer.scrollTop = chatContainer.scrollHeight;
                                     }
                                 }
