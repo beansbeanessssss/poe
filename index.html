@@ -170,7 +170,7 @@
 
         .message-file-item {
             display: flex;
-            align-items: center;
+            flex-direction: column;
             gap: 8px;
             padding: 8px 12px;
             background: rgba(255, 255, 255, 0.1);
@@ -187,6 +187,28 @@
             max-width: 200px;
             max-height: 200px;
             border-radius: 6px;
+        }
+
+        .message-file-name {
+            font-weight: 500;
+            word-break: break-word;
+        }
+
+        .message-file-preview {
+            background: rgba(0, 0, 0, 0.05);
+            padding: 6px 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            max-height: 100px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .message.user .message-file-preview {
+            background: rgba(0, 0, 0, 0.1);
+            color: rgba(255, 255, 255, 0.9);
         }
 
         .message-content {
@@ -878,12 +900,27 @@
                     fileItem.className = 'message-file-item';
 
                     if (file.type.startsWith('image/')) {
-                        fileItem.innerHTML = `
-                            <span>📷 ${file.name}</span><br>
-                            <img src="${file.data}" alt="${file.name}">
-                        `;
+                        const nameSpan = document.createElement('span');
+                        nameSpan.className = 'message-file-name';
+                        nameSpan.textContent = `📷 ${file.name}`;
+                        fileItem.appendChild(nameSpan);
+                        
+                        const img = document.createElement('img');
+                        img.src = file.data;
+                        img.alt = file.name;
+                        fileItem.appendChild(img);
                     } else {
-                        fileItem.innerHTML = `📄 ${file.name}`;
+                        const nameSpan = document.createElement('span');
+                        nameSpan.className = 'message-file-name';
+                        nameSpan.textContent = `📄 ${file.name}`;
+                        fileItem.appendChild(nameSpan);
+                        
+                        // Show preview of text files
+                        const preview = document.createElement('div');
+                        preview.className = 'message-file-preview';
+                        const previewText = file.data.substring(0, 300) + (file.data.length > 300 ? '...' : '');
+                        preview.textContent = previewText;
+                        fileItem.appendChild(preview);
                     }
                     filesDiv.appendChild(fileItem);
                 });
@@ -993,12 +1030,24 @@
             console.log(`Sending with ${displayFiles.length} file(s)`);
 
             // Build message with files
-            let userMessage = { role: 'user', content: message };
+            let messageContent = message;
+
+            // For both providers: Include text files inline in the message
+            if (uploadedFiles.length > 0) {
+                uploadedFiles.forEach(file => {
+                    if (!file.type.startsWith('image/')) {
+                        // Text files - include content inline
+                        messageContent += `\n\n[File: ${file.name}]\n${file.data}\n[End of file]`;
+                    }
+                });
+            }
+
+            let userMessage = { role: 'user', content: messageContent };
 
             if (uploadedFiles.length > 0) {
                 if (provider === 'openai') {
-                    // OpenAI format: content is array
-                    const content = [{ type: 'text', text: message }];
+                    // OpenAI format: content is array with images
+                    const content = [{ type: 'text', text: messageContent }];
                     uploadedFiles.forEach(file => {
                         if (file.type.startsWith('image/')) {
                             content.push({
@@ -1009,14 +1058,17 @@
                     });
                     userMessage.content = content;
                 } else {
-                    // Poe format: attachments array
-                    userMessage.attachments = uploadedFiles.map(file => ({
-                        url: file.data,
-                        content_type: file.type,
-                        name: file.name
-                    }));
+                    // Poe: Images as attachments
+                    const imageFiles = uploadedFiles.filter(f => f.type.startsWith('image/'));
+                    if (imageFiles.length > 0) {
+                        userMessage.attachments = imageFiles.map(file => ({
+                            url: file.data,
+                            content_type: file.type,
+                            name: file.name
+                        }));
+                    }
                 }
-                console.log(`Files added to message (${provider} format)`);
+                console.log(`Files processed (${provider} format):`);
             }
 
             // Display message with files
