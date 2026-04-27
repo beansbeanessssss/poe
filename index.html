@@ -170,7 +170,7 @@
 
         .message-file-item {
             display: flex;
-            flex-direction: column;
+            align-items: center;
             gap: 8px;
             padding: 8px 12px;
             background: rgba(255, 255, 255, 0.1);
@@ -187,28 +187,6 @@
             max-width: 200px;
             max-height: 200px;
             border-radius: 6px;
-        }
-
-        .message-file-name {
-            font-weight: 500;
-            word-break: break-word;
-        }
-
-        .message-file-preview {
-            background: rgba(0, 0, 0, 0.05);
-            padding: 6px 8px;
-            border-radius: 4px;
-            font-family: 'Courier New', monospace;
-            font-size: 11px;
-            max-height: 100px;
-            overflow-y: auto;
-            white-space: pre-wrap;
-            word-break: break-word;
-        }
-
-        .message.user .message-file-preview {
-            background: rgba(0, 0, 0, 0.1);
-            color: rgba(255, 255, 255, 0.9);
         }
 
         .message-content {
@@ -784,9 +762,12 @@
                     updateFilePreview();
                 };
 
-                if (file.type.startsWith('image/')) {
+                if (file.type.startsWith('image/') || file.type === 'application/pdf') {
                     reader.readAsDataURL(file);
+                } else if (file.name.endsWith('.txt') || file.type.startsWith('text/')) {
+                    reader.readAsText(file);
                 } else {
+                    // For other file types, try reading as text
                     reader.readAsText(file);
                 }
             });
@@ -900,27 +881,14 @@
                     fileItem.className = 'message-file-item';
 
                     if (file.type.startsWith('image/')) {
-                        const nameSpan = document.createElement('span');
-                        nameSpan.className = 'message-file-name';
-                        nameSpan.textContent = `📷 ${file.name}`;
-                        fileItem.appendChild(nameSpan);
-                        
-                        const img = document.createElement('img');
-                        img.src = file.data;
-                        img.alt = file.name;
-                        fileItem.appendChild(img);
+                        fileItem.innerHTML = `
+                            <span>📷 ${file.name}</span><br>
+                            <img src="${file.data}" alt="${file.name}">
+                        `;
+                    } else if (file.type === 'application/pdf') {
+                        fileItem.innerHTML = `📄 ${file.name} (PDF)`;
                     } else {
-                        const nameSpan = document.createElement('span');
-                        nameSpan.className = 'message-file-name';
-                        nameSpan.textContent = `📄 ${file.name}`;
-                        fileItem.appendChild(nameSpan);
-                        
-                        // Show preview of text files
-                        const preview = document.createElement('div');
-                        preview.className = 'message-file-preview';
-                        const previewText = file.data.substring(0, 300) + (file.data.length > 300 ? '...' : '');
-                        preview.textContent = previewText;
-                        fileItem.appendChild(preview);
+                        fileItem.innerHTML = `📄 ${file.name}`;
                     }
                     filesDiv.appendChild(fileItem);
                 });
@@ -1032,11 +1000,11 @@
             // Build message with files
             let messageContent = message;
 
-            // For both providers: Include text files inline in the message
-            if (uploadedFiles.length > 0) {
+            // For Poe: Include text files inline in the message
+            if (provider === 'poe' && uploadedFiles.length > 0) {
                 uploadedFiles.forEach(file => {
-                    if (!file.type.startsWith('image/')) {
-                        // Text files - include content inline
+                    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+                        // Text files only - include content inline
                         messageContent += `\n\n[File: ${file.name}]\n${file.data}\n[End of file]`;
                     }
                 });
@@ -1047,28 +1015,33 @@
             if (uploadedFiles.length > 0) {
                 if (provider === 'openai') {
                     // OpenAI format: content is array with images
-                    const content = [{ type: 'text', text: messageContent }];
+                    const content = [{ type: 'text', text: message }];
                     uploadedFiles.forEach(file => {
                         if (file.type.startsWith('image/')) {
                             content.push({
                                 type: 'image_url',
                                 image_url: { url: file.data }
                             });
+                        } else if (file.type !== 'application/pdf') {
+                            // For OpenAI text files, include inline (skip PDFs)
+                            content[0].text += `\n\n[File: ${file.name}]\n${file.data}\n[End of file]`;
                         }
                     });
                     userMessage.content = content;
                 } else {
-                    // Poe: Images as attachments
-                    const imageFiles = uploadedFiles.filter(f => f.type.startsWith('image/'));
-                    if (imageFiles.length > 0) {
-                        userMessage.attachments = imageFiles.map(file => ({
+                    // Poe: Images and PDFs as attachments
+                    const attachmentFiles = uploadedFiles.filter(f =>
+                        f.type.startsWith('image/') || f.type === 'application/pdf'
+                    );
+                    if (attachmentFiles.length > 0) {
+                        userMessage.attachments = attachmentFiles.map(file => ({
                             url: file.data,
                             content_type: file.type,
                             name: file.name
                         }));
                     }
                 }
-                console.log(`Files processed (${provider} format):`);
+                console.log(`Files processed (${provider} format):`, userMessage);
             }
 
             // Display message with files
