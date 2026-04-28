@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>AI Chat</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" onerror="console.warn('PDF.js failed to load')"></script>
     <style>
         * {
             margin: 0;
@@ -600,6 +600,16 @@
             color: #fcd34d;
             background: rgba(245, 158, 11, 0.1);
         }
+
+        .version {
+            position: fixed;
+            bottom: 4px;
+            left: 4px;
+            font-size: 10px;
+            color: #9ca3af;
+            z-index: 999;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
@@ -649,6 +659,8 @@
         </div>
         <div class="console-content" id="consoleContent"></div>
     </div>
+
+    <div class="version">v1.1</div>
 
     <script>
         let conversationHistory = [
@@ -964,14 +976,22 @@
             this.style.height = Math.min(this.scrollHeight, 150) + 'px';
         });
 
-        messageInput.addEventListener('keydown', function(e) {
+        messageInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 sendMessage();
             }
         });
 
-        sendButton.addEventListener('click', sendMessage);
+        sendButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            sendMessage();
+        });
+
+        sendButton.addEventListener('touchend', function(e) {
+            e.preventDefault();
+            sendMessage();
+        });
 
         newChatBtn.addEventListener('click', function() {
             if (confirm('Start a new chat? This will clear the current conversation.')) {
