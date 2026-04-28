@@ -2,13 +2,17 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>AI Chat</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
@@ -17,19 +21,22 @@
             height: 100vh;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
+            touch-action: pan-y;
         }
 
         .header {
             background: white;
             border-bottom: 1px solid #e5e5e5;
-            padding: 16px 20px;
+            padding: 12px 16px;
             box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            flex-shrink: 0;
         }
 
         .header-actions {
             display: flex;
             justify-content: flex-end;
-            margin-top: 12px;
+            margin-top: 10px;
         }
 
         .new-chat-btn {
@@ -37,21 +44,22 @@
             background: #f3f4f6;
             color: #374151;
             border: 1px solid #d1d5db;
-            border-radius: 6px;
-            font-size: 13px;
+            border-radius: 8px;
+            font-size: 14px;
             font-weight: 500;
             cursor: pointer;
             transition: all 0.2s;
+            -webkit-touch-callout: none;
         }
 
-        .new-chat-btn:hover {
+        .new-chat-btn:active {
             background: #e5e7eb;
-            border-color: #9ca3af;
+            transform: scale(0.98);
         }
 
         .config-row {
             display: flex;
-            gap: 12px;
+            gap: 10px;
             flex-wrap: wrap;
             align-items: flex-end;
         }
@@ -61,17 +69,17 @@
             flex-direction: column;
             gap: 6px;
             flex: 1;
-            min-width: 200px;
+            min-width: 150px;
         }
 
         .config-group.small {
             flex: 0 0 auto;
-            min-width: 120px;
+            min-width: 100px;
         }
 
         .config-group label {
-            font-size: 12px;
-            font-weight: 500;
+            font-size: 11px;
+            font-weight: 600;
             color: #6b7280;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -81,9 +89,10 @@
         .config-group select {
             padding: 10px 12px;
             border: 1px solid #d1d5db;
-            border-radius: 6px;
-            font-size: 14px;
-            transition: border-color 0.2s;
+            border-radius: 8px;
+            font-size: 16px;
+            background: white;
+            -webkit-appearance: none;
         }
 
         .config-group input:focus,
@@ -93,24 +102,25 @@
         }
 
         .warning {
-            font-size: 11px;
+            font-size: 10px;
             color: #d97706;
-            margin-top: 6px;
+            margin-top: 4px;
         }
 
         .chat-container {
             flex: 1;
             overflow-y: auto;
-            padding: 20px;
+            -webkit-overflow-scrolling: touch;
+            padding: 16px;
             display: flex;
             flex-direction: column;
-            gap: 16px;
+            gap: 12px;
         }
 
         .message {
             display: flex;
-            gap: 12px;
-            max-width: 800px;
+            gap: 10px;
+            max-width: 100%;
             animation: slideIn 0.3s ease-out;
         }
 
@@ -135,13 +145,13 @@
         }
 
         .message-avatar {
-            width: 36px;
-            height: 36px;
+            width: 32px;
+            height: 32px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
+            font-size: 16px;
             flex-shrink: 0;
         }
 
@@ -160,6 +170,7 @@
             flex-direction: column;
             gap: 8px;
             flex: 1;
+            max-width: calc(100% - 42px);
         }
 
         .message-files {
@@ -176,6 +187,7 @@
             background: rgba(255, 255, 255, 0.1);
             border-radius: 8px;
             font-size: 13px;
+            word-break: break-word;
         }
 
         .message.user .message-file-item {
@@ -184,18 +196,20 @@
         }
 
         .message-file-item img {
-            max-width: 200px;
+            max-width: 100%;
+            height: auto;
             max-height: 200px;
             border-radius: 6px;
         }
 
         .message-content {
             background: white;
-            padding: 12px 16px;
+            padding: 12px 14px;
             border-radius: 12px;
             box-shadow: 0 1px 2px rgba(0,0,0,0.05);
             line-height: 1.6;
             word-wrap: break-word;
+            font-size: 15px;
         }
 
         .message.user .message-content {
@@ -209,6 +223,7 @@
             border-radius: 6px;
             overflow-x: auto;
             margin: 8px 0;
+            font-size: 13px;
         }
 
         .message.assistant .message-content code {
@@ -277,7 +292,7 @@
 
         .sources-btn {
             align-self: flex-start;
-            padding: 6px 12px;
+            padding: 8px 14px;
             background: white;
             border: 1px solid #d1d5db;
             border-radius: 8px;
@@ -287,11 +302,12 @@
             display: flex;
             align-items: center;
             gap: 6px;
+            -webkit-touch-callout: none;
         }
 
-        .sources-btn:hover {
+        .sources-btn:active {
             background: #f9fafb;
-            border-color: #9ca3af;
+            transform: scale(0.98);
         }
 
         .sources-panel {
@@ -329,7 +345,7 @@
             text-decoration: none;
         }
 
-        .source-item a:hover {
+        .source-item a:active {
             text-decoration: underline;
         }
 
@@ -347,14 +363,14 @@
         }
 
         .input-area {
-            padding: 16px 20px;
+            padding: 12px 16px;
+            padding-bottom: max(12px, env(safe-area-inset-bottom));
             background: white;
             border-top: 1px solid #e5e5e5;
+            flex-shrink: 0;
         }
 
         .input-wrapper {
-            max-width: 800px;
-            margin: 0 auto;
             display: flex;
             gap: 8px;
             align-items: flex-end;
@@ -362,14 +378,15 @@
 
         .input-wrapper textarea {
             flex: 1;
-            padding: 12px 16px;
+            padding: 12px 14px;
             border: 1px solid #d1d5db;
             border-radius: 12px;
-            font-size: 14px;
+            font-size: 16px;
             font-family: inherit;
             resize: none;
-            min-height: 50px;
-            max-height: 200px;
+            min-height: 44px;
+            max-height: 150px;
+            -webkit-appearance: none;
         }
 
         .input-wrapper textarea:focus {
@@ -378,8 +395,9 @@
         }
 
         .upload-btn {
-            padding: 0 16px;
-            height: 50px;
+            padding: 0 14px;
+            min-width: 44px;
+            height: 44px;
             background: white;
             color: #374151;
             border: 1px solid #d1d5db;
@@ -387,28 +405,32 @@
             font-size: 20px;
             cursor: pointer;
             transition: all 0.2s;
+            -webkit-touch-callout: none;
         }
 
-        .upload-btn:hover {
+        .upload-btn:active {
             background: #f9fafb;
-            border-color: #9ca3af;
+            transform: scale(0.95);
         }
 
         .input-wrapper button.send-btn {
-            padding: 0 24px;
-            height: 50px;
+            padding: 0 20px;
+            min-width: 44px;
+            height: 44px;
             background: #10a37f;
             color: white;
             border: none;
             border-radius: 12px;
-            font-size: 14px;
+            font-size: 15px;
             font-weight: 500;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: all 0.2s;
+            -webkit-touch-callout: none;
         }
 
-        .input-wrapper button.send-btn:hover:not(:disabled) {
+        .input-wrapper button.send-btn:active:not(:disabled) {
             background: #0d8f6f;
+            transform: scale(0.95);
         }
 
         .input-wrapper button.send-btn:disabled {
@@ -427,10 +449,10 @@
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 4px 8px;
+            padding: 6px 10px;
             background: #e5e7eb;
-            border-radius: 6px;
-            font-size: 12px;
+            border-radius: 8px;
+            font-size: 13px;
         }
 
         .file-tag button {
@@ -438,11 +460,12 @@
             border: none;
             cursor: pointer;
             padding: 0;
-            font-size: 14px;
+            font-size: 16px;
             color: #6b7280;
+            -webkit-touch-callout: none;
         }
 
-        .file-tag button:hover {
+        .file-tag button:active {
             color: #374151;
         }
 
@@ -481,8 +504,8 @@
 
         .console-btn {
             position: fixed;
-            bottom: 20px;
-            right: 20px;
+            bottom: 16px;
+            right: 16px;
             width: 50px;
             height: 50px;
             background: #1f2937;
@@ -491,26 +514,26 @@
             border-radius: 50%;
             font-size: 20px;
             cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
             z-index: 1000;
             transition: all 0.2s;
+            -webkit-touch-callout: none;
         }
 
-        .console-btn:hover {
+        .console-btn:active {
             background: #374151;
-            transform: scale(1.05);
+            transform: scale(0.95);
         }
 
         .console-panel {
             position: fixed;
-            bottom: 80px;
-            right: 20px;
-            width: 400px;
-            max-width: calc(100vw - 40px);
-            height: 300px;
+            bottom: 76px;
+            right: 16px;
+            left: 16px;
+            height: 250px;
             background: #1f2937;
-            border-radius: 8px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
             display: none;
             flex-direction: column;
             z-index: 999;
@@ -526,7 +549,7 @@
             color: white;
             font-size: 14px;
             font-weight: 600;
-            border-radius: 8px 8px 0 0;
+            border-radius: 12px 12px 0 0;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -536,22 +559,24 @@
             background: #374151;
             color: white;
             border: none;
-            padding: 4px 12px;
-            border-radius: 4px;
+            padding: 6px 14px;
+            border-radius: 6px;
             font-size: 12px;
             cursor: pointer;
+            -webkit-touch-callout: none;
         }
 
-        .console-clear:hover {
+        .console-clear:active {
             background: #4b5563;
         }
 
         .console-content {
             flex: 1;
             overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
             padding: 12px;
             font-family: 'Courier New', monospace;
-            font-size: 12px;
+            font-size: 11px;
             color: #e5e7eb;
         }
 
@@ -575,36 +600,13 @@
             color: #fcd34d;
             background: rgba(245, 158, 11, 0.1);
         }
-
-        @media (max-width: 768px) {
-            .config-row {
-                flex-direction: column;
-            }
-
-            .config-group {
-                width: 100%;
-            }
-
-            .chat-container {
-                padding: 12px;
-            }
-
-            .message {
-                max-width: 100%;
-            }
-
-            .console-panel {
-                width: calc(100vw - 40px);
-                height: 250px;
-            }
-        }
     </style>
 </head>
 <body>
     <div class="header">
         <div class="config-row">
             <div class="config-group small">
-                <label for="apiProvider">API Provider</label>
+                <label for="apiProvider">Provider</label>
                 <select id="apiProvider">
                     <option value="poe">Poe</option>
                     <option value="openai">OpenAI</option>
@@ -612,8 +614,8 @@
             </div>
             <div class="config-group">
                 <label for="apiKey">API Key</label>
-                <input type="password" id="apiKey" placeholder="Enter your API key">
-                <div class="warning">⚠️ Never share your API key publicly or commit it to version control</div>
+                <input type="password" id="apiKey" placeholder="Enter API key">
+                <div class="warning">⚠️ Never share your API key</div>
             </div>
             <div class="config-group">
                 <label for="model">Model</label>
@@ -724,6 +726,20 @@
 
         console.log('Console initialized');
 
+        // Initialize PDF.js with error handling
+        let pdfJsLoaded = false;
+        try {
+            if (typeof pdfjsLib !== 'undefined') {
+                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                pdfJsLoaded = true;
+                console.log('PDF.js library loaded successfully');
+            } else {
+                console.warn('PDF.js library not available');
+            }
+        } catch (error) {
+            console.error('PDF.js initialization error:', error.message);
+        }
+
         // Update models when provider changes
         function updateModelList() {
             const provider = apiProviderInput.value;
@@ -747,30 +763,181 @@
         // File upload
         uploadBtn.addEventListener('click', () => fileInput.click());
 
-        fileInput.addEventListener('change', function(e) {
+        async function extractPDFText(file) {
+            // Check if PDF.js is available
+            if (!pdfJsLoaded || typeof pdfjsLib === 'undefined') {
+                console.warn('PDF.js not available, using fallback');
+                return `[PDF Document: ${file.name}]\n\nNote: PDF text extraction not available on this device.\nPlease view the original PDF file for content.`;
+            }
+
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                let fullText = `PDF DOCUMENT STRUCTURE (${pdf.numPages} pages)\n`;
+                fullText += `This is a detailed representation preserving layout, formatting, and structure.\n`;
+                fullText += `Font sizes indicate importance: larger = headings, normal = body text.\n`;
+                fullText += `Spacing and positioning are preserved to show document layout.\n\n`;
+
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    const viewport = page.getViewport({ scale: 1.0 });
+
+                    fullText += `\n${'='.repeat(80)}\n`;
+                    fullText += `PAGE ${i} of ${pdf.numPages}\n`;
+                    fullText += `${'='.repeat(80)}\n\n`;
+
+                    // Group items by vertical position to detect lines/rows
+                    const lines = [];
+                    let currentLine = [];
+                    let lastY = null;
+
+                    textContent.items.forEach((item, idx) => {
+                        const y = item.transform[5];
+                        const height = item.height;
+                        const fontSize = Math.round(height);
+
+                        // New line if Y position changes significantly (more than half the height)
+                        if (lastY !== null && Math.abs(y - lastY) > height / 2) {
+                            if (currentLine.length > 0) {
+                                lines.push(currentLine);
+                                currentLine = [];
+                            }
+                        }
+
+                        currentLine.push({
+                            text: item.str,
+                            x: item.transform[4],
+                            y: y,
+                            width: item.width,
+                            height: height,
+                            fontSize: fontSize,
+                            fontName: item.fontName
+                        });
+
+                        lastY = y;
+                    });
+
+                    if (currentLine.length > 0) {
+                        lines.push(currentLine);
+                    }
+
+                    // Sort lines from top to bottom
+                    lines.sort((a, b) => b[0].y - a[0].y);
+
+                    // Process each line
+                    let lastFontSize = null;
+                    let lastY = null;
+
+                    lines.forEach(line => {
+                        // Sort items in line from left to right
+                        line.sort((a, b) => a.x - b.x);
+
+                        const avgFontSize = Math.round(line.reduce((sum, item) => sum + item.fontSize, 0) / line.length);
+                        const lineY = line[0].y;
+
+                        // Add extra spacing for large vertical gaps (new sections)
+                        if (lastY !== null && lastY - lineY > 20) {
+                            fullText += '\n';
+                        }
+
+                        // Detect headings by font size
+                        if (avgFontSize > 14) {
+                            fullText += `\n[HEADING - ${avgFontSize}pt] `;
+                        } else if (avgFontSize > 12 && avgFontSize <= 14) {
+                            fullText += `\n[SUBHEADING - ${avgFontSize}pt] `;
+                        }
+
+                        // Build the line with spacing
+                        let lineText = '';
+                        let lastX = null;
+
+                        line.forEach((item, idx) => {
+                            // Detect large horizontal gaps (table columns or indentation)
+                            if (lastX !== null && item.x - lastX > 30) {
+                                const spaces = Math.min(Math.floor((item.x - lastX) / 5), 10);
+                                lineText += ' '.repeat(spaces);
+                            } else if (idx > 0 && !lineText.endsWith(' ') && !item.text.startsWith(' ')) {
+                                lineText += ' ';
+                            }
+
+                            lineText += item.text;
+                            lastX = item.x + item.width;
+                        });
+
+                        fullText += lineText + '\n';
+                        lastY = lineY;
+                        lastFontSize = avgFontSize;
+                    });
+                }
+
+                fullText += `\n${'='.repeat(80)}\n`;
+                fullText += `END OF DOCUMENT\n`;
+                fullText += `${'='.repeat(80)}\n`;
+
+                return fullText;
+            } catch (error) {
+                console.error('PDF extraction error:', error);
+                throw new Error(`Failed to extract PDF text: ${error.message}`);
+            }
+        }
+
+        fileInput.addEventListener('change', async function(e) {
             const files = Array.from(e.target.files);
             console.log(`Selected ${files.length} file(s)`);
 
-            files.forEach(file => {
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    uploadedFiles.push({
-                        name: file.name,
-                        type: file.type,
-                        data: event.target.result
-                    });
-                    updateFilePreview();
-                };
-
-                if (file.type.startsWith('image/') || file.type === 'application/pdf') {
-                    reader.readAsDataURL(file);
-                } else if (file.name.endsWith('.txt') || file.type.startsWith('text/')) {
-                    reader.readAsText(file);
-                } else {
-                    // For other file types, try reading as text
-                    reader.readAsText(file);
+            for (const file of files) {
+                try {
+                    if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+                        console.log(`Extracting text from PDF: ${file.name}`);
+                        const pdfText = await extractPDFText(file);
+                        uploadedFiles.push({
+                            name: file.name,
+                            type: 'text/plain',
+                            data: pdfText
+                        });
+                        console.log(`PDF text extracted: ${pdfText.length} characters`);
+                        updateFilePreview();
+                    } else if (file.type.startsWith('image/')) {
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            uploadedFiles.push({
+                                name: file.name,
+                                type: file.type,
+                                data: event.target.result
+                            });
+                            updateFilePreview();
+                        };
+                        reader.readAsDataURL(file);
+                    } else if (file.name.endsWith('.txt') || file.type.startsWith('text/')) {
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            uploadedFiles.push({
+                                name: file.name,
+                                type: file.type,
+                                data: event.target.result
+                            });
+                            updateFilePreview();
+                        };
+                        reader.readAsText(file);
+                    } else {
+                        // For other file types, try reading as text
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            uploadedFiles.push({
+                                name: file.name,
+                                type: file.type,
+                                data: event.target.result
+                            });
+                            updateFilePreview();
+                        };
+                        reader.readAsText(file);
+                    }
+                } catch (error) {
+                    console.error(`Error processing ${file.name}:`, error);
+                    alert(`Error processing ${file.name}: ${error.message}`);
                 }
-            });
+            }
         });
 
         function updateFilePreview() {
@@ -794,7 +961,7 @@
 
         messageInput.addEventListener('input', function() {
             this.style.height = 'auto';
-            this.style.height = Math.min(this.scrollHeight, 200) + 'px';
+            this.style.height = Math.min(this.scrollHeight, 150) + 'px';
         });
 
         messageInput.addEventListener('keydown', function(e) {
@@ -821,36 +988,15 @@
         function parseMarkdown(text) {
             let html = text;
             html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            html = html.replace(/```(\w+)?\n?([\s\S]*?)```/g, (match, lang, code) => '<pre><code>' + code.trim() + '</code></pre>');
-            html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-            html = html.replace(/^### (.*$)/gm, '<h3>$1</h3>');
-            html = html.replace(/^## (.*$)/gm, '<h2>$1</h2>');
-            html = html.replace(/^# (.*$)/gm, '<h1>$1</h1>');
-            html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-            html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
-            html = html.replace(/\*([^*]+?)\*/g, '<em>$1</em>');
-            html = html.replace(/_([^_]+?)_/g, '<em>$1</em>');
-            html = html.replace(/\[([^\]]+)\]\(([^\)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
-            html = html.replace(/\n\n/g, '</p><p>');
-            html = '<p>' + html + '</p>';
-            html = html.replace(/<p>([^\n]*- .+?)<\/p>/gs, function(match, list) {
-                let items = list.split('\n').filter(line => line.trim().startsWith('-'));
-                if (items.length > 0) {
-                    let ul = '<ul>';
-                    items.forEach(item => ul += '<li>' + item.replace(/^- /, '').trim() + '</li>');
-                    ul += '</ul>';
-                    return ul;
-                }
-                return match;
+            html = html.replace(/```[\s\S]*?```/g, (match) => {
+                const code = match.replace(/```\w*\n?/, '').replace(/```$/, '');
+                return '<pre><code>' + code.trim() + '</code></pre>';
             });
-            html = html.replace(/^&gt; (.*$)/gm, '<blockquote>$1</blockquote>');
-            html = html.replace(/<p>\s*<\/p>/g, '');
-            html = html.replace(/<p>\s*(<h[123]>)/g, '$1');
-            html = html.replace(/(<\/h[123]>)\s*<\/p>/g, '$1');
-            html = html.replace(/<p>\s*(<ul>)/g, '$1');
-            html = html.replace(/(<\/ul>)\s*<\/p>/g, '$1');
-            html = html.replace(/<p>\s*(<pre>)/g, '$1');
-            html = html.replace(/(<\/pre>)\s*<\/p>/g, '$1');
+            html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+            html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+            html = html.replace(/\[([^\]]+)\]\(([^\)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+            html = html.replace(/\n/g, '<br>');
             return html;
         }
 
@@ -885,8 +1031,8 @@
                             <span>📷 ${file.name}</span><br>
                             <img src="${file.data}" alt="${file.name}">
                         `;
-                    } else if (file.type === 'application/pdf') {
-                        fileItem.innerHTML = `📄 ${file.name} (PDF)`;
+                    } else if (file.name.toLowerCase().endsWith('.pdf')) {
+                        fileItem.innerHTML = `📄 ${file.name} (PDF - text extracted)`;
                     } else {
                         fileItem.innerHTML = `📄 ${file.name}`;
                     }
@@ -972,9 +1118,7 @@
             const message = messageInput.value.trim();
             const provider = apiProviderInput.value;
 
-            console.log('=== SEND MESSAGE START ===');
-            console.log('Provider:', provider);
-            console.log('Model:', model);
+            console.log('Sending message...');
 
             if (!apiKey) {
                 addMessage('assistant', 'Please enter your API key.', true);
@@ -1003,8 +1147,8 @@
             // For Poe: Include text files inline in the message
             if (provider === 'poe' && uploadedFiles.length > 0) {
                 uploadedFiles.forEach(file => {
-                    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
-                        // Text files only - include content inline
+                    if (!file.type.startsWith('image/')) {
+                        // Text files (including extracted PDF text) - include content inline
                         messageContent += `\n\n[File: ${file.name}]\n${file.data}\n[End of file]`;
                     }
                 });
@@ -1142,9 +1286,11 @@
                                         messageDiv.appendChild(wrapper);
                                         chatContainer.appendChild(messageDiv);
                                     } else {
-                                        if (updateCount % 5 === 0) {
+                                        if (updateCount % 20 === 0) {
                                             contentDiv.textContent = assistantMessage;
-                                            chatContainer.scrollTop = chatContainer.scrollHeight;
+                                            if (updateCount % 40 === 0) {
+                                                chatContainer.scrollTop = chatContainer.scrollHeight;
+                                            }
                                         }
                                     }
                                 }
@@ -1155,7 +1301,7 @@
                     }
                 }
 
-                console.log(`Stream complete. Message: ${assistantMessage.length} chars`);
+                console.log('Stream complete');
 
                 if (assistantMessage) {
                     if (contentDiv) {
@@ -1176,7 +1322,6 @@
                 isGenerating = false;
                 sendButton.disabled = false;
                 messageInput.focus();
-                console.log('=== SEND MESSAGE END ===');
             }
         }
 
