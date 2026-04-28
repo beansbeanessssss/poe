@@ -660,7 +660,7 @@
         <div class="console-content" id="consoleContent"></div>
     </div>
 
-    <div class="version">v1.1</div>
+    <div class="version">v1.2</div>
 
     <script>
         let conversationHistory = [
@@ -976,22 +976,14 @@
             this.style.height = Math.min(this.scrollHeight, 150) + 'px';
         });
 
-        messageInput.addEventListener('keypress', function(e) {
+        messageInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 sendMessage();
             }
         });
 
-        sendButton.addEventListener('click', function(e) {
-            e.preventDefault();
-            sendMessage();
-        });
-
-        sendButton.addEventListener('touchend', function(e) {
-            e.preventDefault();
-            sendMessage();
-        });
+        sendButton.addEventListener('click', sendMessage);
 
         newChatBtn.addEventListener('click', function() {
             if (confirm('Start a new chat? This will clear the current conversation.')) {
